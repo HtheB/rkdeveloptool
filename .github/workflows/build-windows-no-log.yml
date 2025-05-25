@@ -3,7 +3,9 @@ name: Build rkdeveloptool for Windows (no-log)
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
 
 jobs:
   build:
@@ -17,9 +19,10 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           update: true
-          install: >
+          install: |
             base-devel
             mingw-w64-x86_64-gcc
+          msystem: MSYS
 
       - name: Disable auto-log folder
         shell: msys2 {0}
