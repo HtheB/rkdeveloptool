@@ -3,61 +3,44 @@ name: Build rkdeveloptool for Windows (no-log)
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, master ]
 
 jobs:
-  build:
-    runs-on: windows-latest
+  build-windows:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out source
         uses: actions/checkout@v3
 
-      - name: Install MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          update: true
-
-      - name: Install MSYS autotools (autoconf, automake, etc.)
-        shell: powershell
+      - name: Install build dependencies
         run: |
-          $env:MSYSTEM = 'MSYS'
-          msys2 -c "pacman -Sy --noconfirm --needed base-devel"
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake libtool pkg-config make \
+            gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
 
-      - name: Install MINGW64 toolchain & libusb
-        shell: powershell
+      - name: Patch out auto-log directory
         run: |
-          $env:MSYSTEM = 'MINGW64'
-          msys2 -c "pacman -Sy --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-libusb"
+          sed -i 's/CreateDirectory("log", nullptr);/\/\/CreateDirectory("log", nullptr);/' RKLog.cpp
 
-      - name: Patch out auto-log folder creation
-        shell: powershell
+      - name: Generate configure scripts
+        run: autoreconf -fi
+
+      - name: Configure for Windows (x86_64)
         run: |
-          (Get-Content RKLog.cpp) `
-            -replace 'CreateDirectory\("log", nullptr\);', '//CreateDirectory("log", nullptr);' `
-          | Set-Content RKLog.cpp
+          CC=x86_64-w64-mingw32-gcc \
+          ./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking
 
-      - name: Generate configure scripts (autoreconf)
-        shell: powershell
+      - name: Build executable
+        run: make -j$(nproc)
+
+      - name: Gather `rkdeveloptool.exe`
         run: |
-          $env:MSYSTEM = 'MSYS'
-          msys2 -c "autoreconf -fi"
+          # the build puts it in src/, so move it up:
+          mv src/rkdeveloptool.exe .
 
-      - name: Configure for MinGW64
-        shell: powershell
-        run: |
-          $env:MSYSTEM = 'MINGW64'
-          msys2 -c "./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking"
-
-      - name: Build rkdeveloptool.exe
-        shell: powershell
-        run: |
-          $env:MSYSTEM = 'MINGW64'
-          msys2 -c "make -j$(nproc)"
-
-      - name: Upload no-log artifact
+      - name: Publish Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: rkdeveloptool-windows-no-log
