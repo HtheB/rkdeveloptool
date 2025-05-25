@@ -3,16 +3,20 @@ name: Build rkdeveloptool for Windows (no-log)
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-      - name: Check out source
+      - name: Checkout source
         uses: actions/checkout@v3
+
+      - name: Patch RKLog.cpp on Windows
+        shell: powershell
+        run: |
+          (Get-Content RKLog.cpp) -replace 'CreateDirectory\("log", nullptr\);', '//CreateDirectory("log", nullptr);' | Set-Content RKLog.cpp
 
       - name: Install MSYS2 + dependencies
         uses: msys2/setup-msys2@v2
@@ -23,31 +27,22 @@ jobs:
             mingw-w64-x86_64-gcc
           msystem: MSYS
 
-      - name: Disable auto-log folder
-        shell: powershell
-        run: |
-          $env:MSYSTEM = 'MSYS'
-          msys2 -c 'sed -i "s@CreateDirectory(\"log\", nullptr);@//CreateDirectory(\"log\", nullptr);@" RKLog.cpp'
-
       - name: Generate build scripts
-        shell: powershell
+        shell: msys2 {0}
         run: |
-          $env:MSYSTEM = 'MSYS'
-          msys2 -c 'autoreconf -fi'
+          autoreconf -fi
 
       - name: Configure for MinGW64
-        shell: powershell
+        shell: msys2 {0}
         run: |
-          $env:MSYSTEM = 'MINGW64'
-          msys2 -c './configure --host=x86_64-w64-mingw32 --disable-dependency-tracking'
+          ./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking
 
       - name: Build
-        shell: powershell
+        shell: msys2 {0}
         run: |
-          $env:MSYSTEM = 'MINGW64'
-          msys2 -c 'make -j$(nproc)'
+          make -j$(nproc)
 
-      - name: Upload patched rkdeveloptool.exe
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: rkdeveloptool-windows-no-log
