@@ -1,0 +1,48 @@
+# .github/workflows/build-windows-no-log.yml
+name: Build rkdeveloptool for Windows (no-log)
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Install MSYS2 & dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-autoconf
+            mingw-w64-x86_64-automake
+            mingw-w64-x86_64-libtool
+            mingw-w64-x86_64-make
+
+      - name: Disable auto-log folder
+        run: |
+          sed -i 's/CreateDirectory("log", nullptr);/\/\/CreateDirectory("log", nullptr);/' src/RKLog.cpp
+
+      - name: Generate build scripts
+        run: |
+          autoreconf -fi
+
+      - name: Configure for MinGW64
+        shell: msys2 {0}
+        run: |
+          ./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          make -j$(nproc)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: rkdeveloptool-windows-no-log
+          path: src/rkdeveloptool.exe
