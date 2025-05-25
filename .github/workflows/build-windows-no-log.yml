@@ -3,7 +3,9 @@ name: Build rkdeveloptool for Windows (no-log)
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
 
 jobs:
   build:
@@ -25,25 +27,25 @@ jobs:
         shell: powershell
         run: |
           $env:MSYSTEM = 'MSYS'
-          msys2 -c "sed -i 's/CreateDirectory(\"log\", nullptr);/\\/\\/CreateDirectory(\"log\", nullptr);/' RKLog.cpp"
+          msys2 -c 'sed -i "s@CreateDirectory(\"log\", nullptr);@//CreateDirectory(\"log\", nullptr);@" RKLog.cpp'
 
       - name: Generate build scripts
         shell: powershell
         run: |
           $env:MSYSTEM = 'MSYS'
-          msys2 -c "autoreconf -fi"
+          msys2 -c 'autoreconf -fi'
 
       - name: Configure for MinGW64
         shell: powershell
         run: |
           $env:MSYSTEM = 'MINGW64'
-          msys2 -c "./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking"
+          msys2 -c './configure --host=x86_64-w64-mingw32 --disable-dependency-tracking'
 
       - name: Build
         shell: powershell
         run: |
           $env:MSYSTEM = 'MINGW64'
-          msys2 -c "make -j\$(nproc)"
+          msys2 -c 'make -j$(nproc)'
 
       - name: Upload patched rkdeveloptool.exe
         uses: actions/upload-artifact@v4
