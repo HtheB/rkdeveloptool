@@ -3,44 +3,53 @@ name: Build rkdeveloptool for Windows (no-log)
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
 
 jobs:
-  build-windows:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: windows-latest
 
     steps:
       - name: Check out source
         uses: actions/checkout@v3
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            autoconf automake libtool pkg-config make \
-            gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+      - name: Install MSYS2 + toolchains
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: |
+            base-devel
+            mingw-w64-x86_64-gcc
+          msystem: MSYS
 
-      - name: Patch out auto-log directory
+      - name: Patch RKLog.cpp to disable logging
+        shell: powershell
         run: |
-          sed -i 's/CreateDirectory("log", nullptr);/\/\/CreateDirectory("log", nullptr);/' RKLog.cpp
+          (Get-Content RKLog.cpp) `
+            -replace 'CreateDirectory\("log", nullptr\);', '//CreateDirectory("log", nullptr);' `
+          | Set-Content RKLog.cpp
 
-      - name: Generate configure scripts
-        run: autoreconf -fi
-
-      - name: Configure for Windows (x86_64)
+      - name: Generate configure scripts (MSYS)
+        shell: bash
         run: |
-          CC=x86_64-w64-mingw32-gcc \
+          export MSYSTEM=MSYS
+          autoreconf -fi
+
+      - name: Configure for MinGW64
+        shell: bash
+        run: |
+          export MSYSTEM=MINGW64
           ./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking
 
-      - name: Build executable
-        run: make -j$(nproc)
-
-      - name: Gather `rkdeveloptool.exe`
+      - name: Build rkdeveloptool.exe
+        shell: bash
         run: |
-          # the build puts it in src/, so move it up:
-          mv src/rkdeveloptool.exe .
+          export MSYSTEM=MINGW64
+          make -j$(nproc)
 
-      - name: Publish Windows artifact
+      - name: Upload no-log Windows exe
         uses: actions/upload-artifact@v4
         with:
           name: rkdeveloptool-windows-no-log
