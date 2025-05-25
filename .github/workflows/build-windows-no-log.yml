@@ -24,6 +24,8 @@ jobs:
             mingw-w64-x86_64-make
 
       - name: Disable auto-log folder
+        # run this in MSYS2 so sed actually works:
+        shell: msys2 {0}
         run: |
           sed -i 's/CreateDirectory("log", nullptr);/\/\/CreateDirectory("log", nullptr);/' src/RKLog.cpp
 
