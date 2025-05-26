@@ -15,42 +15,46 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v3
 
-      - name: Set up MSYS2 with Autotools & MinGW64
+      - name: Set up MSYS2 with Autotools & cross toolchain
         uses: msys2/setup-msys2@v2
         with:
           update: true
           install: |
-            base-devel
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-libusb
+            base-devel                     # autoconf, automake, libtool, make, pkgconf, etc.
+            mingw-w64-x86_64-gcc           # MinGW-w64 C/C++ compiler
+            mingw-w64-x86_64-libusb        # Windows libusb-1.0
+            mingw-w64-x86_64-pkg-config    # pkg-config for MINGW64
           msystem: MSYS
 
-      - name: Patch out auto-log folder creation
+      - name: Patch RKLog.cpp (disable CreateDirectory)
         shell: msys2 {0}
+        env:
+          MSYSTEM: MSYS
         run: |
           sed -i 's@CreateDirectory("log", nullptr);@//CreateDirectory("log", nullptr);@' RKLog.cpp
 
-      - name: Generate configure scripts (MSYS)
-        shell: msys2 {0}
-        run: |
-          export MSYSTEM=MSYS
-          autoreconf -fi
-
-      - name: Configure for native Windows (MINGW64)
+      - name: Regenerate configure scripts (MSYS)
         shell: msys2 {0}
         env:
-          PKG_CONFIG_PATH: /mingw64/lib/pkgconfig
+          MSYSTEM: MSYS
         run: |
-          export MSYSTEM=MINGW64
+          autoreconf -fi
+
+      - name: Configure for Windows (MINGW64)
+        shell: msys2 {0}
+        env:
+          MSYSTEM: MINGW64
+        run: |
           ./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking
 
       - name: Build rkdeveloptool.exe (MINGW64)
         shell: msys2 {0}
+        env:
+          MSYSTEM: MINGW64
         run: |
-          export MSYSTEM=MINGW64
           make -j$(nproc)
 
-      - name: Upload no-log rkdeveloptool.exe
+      - name: Upload no-log Windows binary
         uses: actions/upload-artifact@v4
         with:
           name: rkdeveloptool-windows-no-log
