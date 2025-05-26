@@ -32,14 +32,18 @@ jobs:
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-libusb
 
-      - name: Patch RKLog::Init (completely disable logging)
+      - name: Patch out all logging
         shell: msys2 {0}
         env:
           MSYSTEM: MSYS
         run: |
-          # Stub out the entire RKLog::Init definition, catching any indentation:
+          # 1) Stub out RKLog::Init() entirely
           sed -i '/void RKLog::Init\s*()/,/}/c\void RKLog::Init() {}' RKLog.cpp
-          # Remove the unused variable that breaks -Werror
+
+          # 2) Comment out any call to RKLog::Init()
+          sed -i '/RKLog::Init()/s/^/\/\/ /' main.cpp
+
+          # 3) Remove unused variable that breaks -Werror
           sed -i '/char szProgramProcPath\[100\];/d' main.cpp
 
       - name: Regenerate Autotools scripts (MSYS)
