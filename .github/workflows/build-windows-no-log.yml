@@ -15,14 +15,14 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v3
 
-      - name: Set up MSYS2 with Autotools + MinGW64
+      - name: Set up MSYS2 with Autotools & MinGW64
         uses: msys2/setup-msys2@v2
         with:
           update: true
           install: |
-            base-devel                # autoconf, automake, libtool, make, etc.
-            mingw-w64-x86_64-gcc      # MinGW-w64 GCC compiler
-            mingw-w64-x86_64-libusb   # Windows libusb for rkdeveloptool
+            base-devel
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-libusb
           msystem: MSYS
 
       - name: Patch out auto-log folder creation
