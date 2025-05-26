@@ -32,12 +32,14 @@ jobs:
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-libusb
 
-      - name: Patch RKLog.cpp & remove unused var
+      - name: Patch RKLog::Init and remove unused var
         shell: msys2 {0}
         env:
           MSYSTEM: MSYS
         run: |
-          sed -i 's@CreateDirectory("log", nullptr);@//CreateDirectory("log", nullptr);@' RKLog.cpp
+          # Stub out entire RKLog::Init() so it does nothing
+          sed -i '/void RKLog::Init()/,/^}/c\void RKLog::Init() {}' RKLog.cpp
+          # Remove the unused variable that breaks -Werror
           sed -i '/char szProgramProcPath\[100\];/d' main.cpp
 
       - name: Regenerate Autotools scripts (MSYS)
