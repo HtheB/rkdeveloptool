@@ -15,16 +15,22 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v3
 
-      - name: Set up MSYS2 with Autotools & MinGW64
+      - name: Install MSYS2 + Autotools & MinGW64
         uses: msys2/setup-msys2@v2
         with:
           update: true
           msystem: MSYS
           install: |
-            base-devel
+            autoconf
+            automake
+            libtool
+            pkgconf
+            make
+            m4
+            patch
             mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-libusb
             mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-libusb
 
       - name: Patch RKLog.cpp (disable CreateDirectory)
         shell: msys2 {0}
