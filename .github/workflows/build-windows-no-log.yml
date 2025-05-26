@@ -32,13 +32,13 @@ jobs:
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-libusb
 
-      - name: Patch RKLog::Init and remove unused var
+      - name: Patch RKLog::Init (completely disable logging)
         shell: msys2 {0}
         env:
           MSYSTEM: MSYS
         run: |
-          # Stub out entire RKLog::Init() so it does nothing
-          sed -i '/void RKLog::Init()/,/^}/c\void RKLog::Init() {}' RKLog.cpp
+          # Stub out the entire RKLog::Init definition, catching any indentation:
+          sed -i '/void RKLog::Init\s*()/,/}/c\void RKLog::Init() {}' RKLog.cpp
           # Remove the unused variable that breaks -Werror
           sed -i '/char szProgramProcPath\[100\];/d' main.cpp
 
