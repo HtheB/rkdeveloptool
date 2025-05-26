@@ -10,12 +10,11 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-      - name: Check out source
+      - name: Check out the repo
         uses: actions/checkout@v3
 
-      - name: Install MSYS2 + toolchains
+      - name: Install MSYS2 & toolchain
         uses: msys2/setup-msys2@v2
         with:
           update: true
@@ -24,32 +23,32 @@ jobs:
             mingw-w64-x86_64-gcc
           msystem: MSYS
 
-      - name: Patch RKLog.cpp to disable logging
-        shell: powershell
+      - name: Patch RKLog.cpp (disable CreateDirectory)
+        shell: msys2 {0}
         run: |
-          (Get-Content RKLog.cpp) `
-            -replace 'CreateDirectory\("log", nullptr\);', '//CreateDirectory("log", nullptr);' `
-          | Set-Content RKLog.cpp
+          sed -i 's@CreateDirectory("log", nullptr);@//CreateDirectory("log", nullptr);@' RKLog.cpp
 
-      - name: Generate configure scripts (MSYS)
-        shell: bash
+      - name: Generate configure scripts (autoreconf)
+        shell: msys2 {0}
         run: |
+          # ensure we're in the MSYS subsystem for Autotools
           export MSYSTEM=MSYS
           autoreconf -fi
 
-      - name: Configure for MinGW64
-        shell: bash
+      - name: Configure for native Windows
+        shell: msys2 {0}
         run: |
+          # switch to MINGW64 so configure picks the right compiler
           export MSYSTEM=MINGW64
           ./configure --host=x86_64-w64-mingw32 --disable-dependency-tracking
 
       - name: Build rkdeveloptool.exe
-        shell: bash
+        shell: msys2 {0}
         run: |
           export MSYSTEM=MINGW64
           make -j$(nproc)
 
-      - name: Upload no-log Windows exe
+      - name: Upload Windows no-log binary
         uses: actions/upload-artifact@v4
         with:
           name: rkdeveloptool-windows-no-log
